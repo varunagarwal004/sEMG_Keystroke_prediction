@@ -1,0 +1,354 @@
+(emg2qwerty) C:\Users\melis\Downloads\Baseline\emg2qwerty>python -m emg2qwerty.train user=single_user trainer.accelerator=gpu trainer.devices=1
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_125759-2tse3tu5
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/2tse3tu5
+[2025-03-08 12:58:00,604][__main__][INFO] - 
+Config:
+user: single_user
+dataset:
+  train:
+  - user: 89335547
+    session: 2021-06-03-1622765527-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-06-02-1622681518-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-07-22-1627003020-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-07-21-1626916256-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-07-22-1627004019-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-06-02-1622679967-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-06-03-1622764398-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-07-21-1626917264-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-06-05-1622889105-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-06-04-1622861066-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-07-22-1627001995-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-06-05-1622884635-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  val:
+  - user: 89335547
+    session: 2021-06-04-1622862148-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-06-05-1622885888-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-06-04-1622863166-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-07-21-1626915176-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  test:
+  - user: 89335547
+    session: 2021-06-02-1622682789-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  - user: 89335547
+    session: 2021-06-03-1622766673-keystrokes-dca-study@1-0efbe614-9ae6-4131-9192-4398359b4f5f
+  root: ${hydra:runtime.cwd}/data
+to_tensor:
+  _target_: emg2qwerty.transforms.ToTensor
+  fields:
+  - emg_left
+  - emg_right
+band_rotation:
+  _target_: emg2qwerty.transforms.ForEach
+  transform:
+    _target_: emg2qwerty.transforms.RandomBandRotation
+    offsets:
+    - -1
+    - 0
+    - 1
+temporal_jitter:
+  _target_: emg2qwerty.transforms.TemporalAlignmentJitter
+  max_offset: 120
+logspec:
+  _target_: emg2qwerty.transforms.LogSpectrogram
+  n_fft: 64
+  hop_length: 16
+specaug:
+  _target_: emg2qwerty.transforms.SpecAugment
+  n_time_masks: 3
+  time_mask_param: 25
+  n_freq_masks: 2
+  freq_mask_param: 4
+transforms:
+  train:
+  - ${to_tensor}
+  - ${band_rotation}
+  - ${temporal_jitter}
+  - ${logspec}
+  - ${specaug}
+  val:
+  - ${to_tensor}
+  - ${logspec}
+  test: ${transforms.val}
+module:
+  _target_: emg2qwerty.lightning.TDSConvCTCModule
+  in_features: 528
+  mlp_features:
+  - 384
+  block_channels:
+  - 24
+  - 24
+  - 24
+  - 24
+  kernel_width: 32
+datamodule:
+  _target_: emg2qwerty.lightning.WindowedEMGDataModule
+  window_length: 8000
+  padding:
+  - 1800
+  - 200
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 0.001
+lr_scheduler:
+  scheduler:
+    _target_: pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR
+    warmup_epochs: 10
+    max_epochs: ${trainer.max_epochs}
+    warmup_start_lr: 1.0e-08
+    eta_min: 1.0e-06
+  interval: epoch
+decoder:
+  _target_: emg2qwerty.decoder.CTCGreedyDecoder
+seed: 1501
+batch_size: 32
+num_workers: 4
+train: true
+checkpoint: null
+monitor_metric: val/CER
+monitor_mode: min
+trainer:
+  accelerator: gpu
+  devices: 1
+  num_nodes: 1
+  max_epochs: 30
+  default_root_dir: ${hydra:runtime.output_dir}
+callbacks:
+- _target_: pytorch_lightning.callbacks.LearningRateMonitor
+- _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  dirpath: ${hydra:runtime.output_dir}/checkpoints
+  monitor: ${monitor_metric}
+  mode: ${monitor_mode}
+  save_last: true
+  verbose: true
+
+Global seed set to 1501
+[2025-03-08 12:58:00,609][__main__][INFO] - Instantiating LightningModule {'_target_': 'emg2qwerty.lightning.TDSConvCTCModule', 'in_features': 528, 'mlp_features': [384], 'block_channels': [24, 24, 24, 24], 'kernel_width': 32}
+[2025-03-08 12:58:00,669][__main__][INFO] - Instantiating LightningDataModule {'_target_': 'emg2qwerty.lightning.WindowedEMGDataModule', 'window_length': 8000, 'padding': [1800, 200]}
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+C:\Users\melis\anaconda3\envs\emg2qwerty\lib\site-packages\pl_bolts\__init__.py:11: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.
+  if not hasattr(numpy, tp_name):
+C:\Users\melis\anaconda3\envs\emg2qwerty\lib\site-packages\pl_bolts\__init__.py:11: FutureWarning: In the future `np.bool` will be defined as the corresponding NumPy scalar.
+  if not hasattr(numpy, tp_name):
+C:\Users\melis\anaconda3\envs\emg2qwerty\lib\site-packages\pl_bolts\models\self_supervised\amdim\amdim_module.py:34: UnderReviewWarning: The feature generate_power_seq is currently marked under review. The compatibility with other Lightning projects is not guaranteed and API may change at any time. The API and functionality may change without warning in future releases. More details: https://lightning-bolts.readthedocs.io/en/latest/stability.html
+  "lr_options": generate_power_seq(LEARNING_RATE_CIFAR, 11),
+C:\Users\melis\anaconda3\envs\emg2qwerty\lib\site-packages\pl_bolts\models\self_supervised\amdim\amdim_module.py:92: UnderReviewWarning: The feature FeatureMapContrastiveTask is currently marked under review. The compatibility with other Lightning projects is not guaranteed and API may change at any time. The API and functionality may change without warning in future releases. More details: https://lightning-bolts.readthedocs.io/en/latest/stability.html
+  contrastive_task: Union[FeatureMapContrastiveTask] = FeatureMapContrastiveTask("01, 02, 11"),
+C:\Users\melis\anaconda3\envs\emg2qwerty\lib\site-packages\pl_bolts\losses\self_supervised_learning.py:228: UnderReviewWarning: The feature AmdimNCELoss is currently marked under review. The compatibility with other Lightning projects is not guaranteed and API may change at any time. The API and functionality may change without warning in future releases. More details: https://lightning-bolts.readthedocs.io/en/latest/stability.html
+  self.nce_loss = AmdimNCELoss(tclip)
+C:\Users\melis\anaconda3\envs\emg2qwerty\lib\site-packages\hydra\_internal\instantiate\_instantiate2.py:92: UnderReviewWarning: The feature LinearWarmupCosineAnnealingLR is currently marked under review. The compatibility with other Lightning projects is not guaranteed and API may change at any time. The API and functionality may change without warning in future releases. More details: https://lightning-bolts.readthedocs.io/en/latest/stability.html
+  return _target_(*args, **kwargs)
+
+  | Name     | Type       | Params
+----------------------------------------
+0 | model    | Sequential | 5.3 M
+1 | ctc_loss | CTCLoss    | 0
+2 | metrics  | ModuleDict | 0
+----------------------------------------
+5.3 M     Trainable params
+0         Non-trainable params
+5.3 M     Total params
+21.173    Total estimated model params size (MB)
+Sanity Checking: 0it [00:00, ?it/s]wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_125804-znfqxo8f
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/znfqxo8f
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_125804-ge08rzn4
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/ge08rzn4
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_125804-ycq6qz7w
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/ycq6qz7w
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_125804-tn9681mv
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/tn9681mv
+Sanity Checking DataLoader 0:   0%|                                                                                                                                                              | 0/2 [00:00<?, ?it/s]C:\Users\melis\anaconda3\envs\emg2qwerty\lib\site-packages\torch\nn\modules\conv.py:456: UserWarning: Plan failed with a cudnnException: CUDNN_BACKEND_EXECUTION_PLAN_DESCRIPTOR: cudnnFinalize Descriptor Failed cudnn_status: CUDNN_STATUS_NOT_SUPPORTED (Triggered internally at C:\cb\pytorch_1000000000000\work\aten\src\ATen\native\cudnn\Conv_v8.cpp:919.)
+  return F.conv2d(input, weight, bias, self.stride,
+Epoch 0:   0%|                                                                                                                                                                                 | 0/120 [00:00<?, ?it/s]wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_125809-40u0spcr
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/40u0spcr
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_125809-jsevswu4
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/jsevswu4
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_125809-t9dhj09e
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/t9dhj09e
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_125809-31pueb0y
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/31pueb0y
+C:\Users\melis\anaconda3\envs\emg2qwerty\lib\site-packages\torch\autograd\graph.py:744: UserWarning: Plan failed with a cudnnException: CUDNN_BACKEND_EXECUTION_PLAN_DESCRIPTOR: cudnnFinalize Descriptor Failed cudnn_status: CUDNN_STATUS_NOT_SUPPORTED (Triggered internally at C:\cb\pytorch_1000000000000\work\aten\src\ATen\native\cudnn\Conv_v8.cpp:919.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+Epoch 0: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:16<00:00,  7.40it/s, loss=125, v_num=3tu5]Epoch 0, global step 91: 'val/CER' reached 1530.15283 (best 1530.15283), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=0-step=91.ckpt' as top 1     
+Epoch 1: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.01it/s, loss=3.71, v_num=3tu5]Epoch 1, global step 182: 'val/CER' reached 100.00000 (best 100.00000), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=1-step=182.ckpt' as top 1     
+Epoch 2: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.17it/s, loss=3.33, v_num=3tu5]Epoch 2, global step 273: 'val/CER' was not in top 1
+Epoch 3: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.15it/s, loss=3.27, v_num=3tu5]Epoch 3, global step 364: 'val/CER' was not in top 1
+Epoch 4: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.18it/s, loss=3.29, v_num=3tu5]Epoch 4, global step 455: 'val/CER' was not in top 1
+Epoch 5: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.08it/s, loss=3.09, v_num=3tu5]Epoch 5, global step 546: 'val/CER' was not in top 1
+Epoch 6: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.05it/s, loss=3.02, v_num=3tu5]Epoch 6, global step 637: 'val/CER' was not in top 1
+Epoch 7: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.21it/s, loss=3, v_num=3tu5]Epoch 7, global step 728: 'val/CER' was not in top 1
+Epoch 8: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.15it/s, loss=2.93, v_num=3tu5]Epoch 8, global step 819: 'val/CER' was not in top 1
+Epoch 9: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.07it/s, loss=2.85, v_num=3tu5]Epoch 9, global step 910: 'val/CER' was not in top 1
+Epoch 10: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:15<00:00,  7.59it/s, loss=2.76, v_num=3tu5]Epoch 10, global step 1001: 'val/CER' reached 99.96152 (best 99.96152), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=10-step=1001.ckpt' as top 1   
+Epoch 11: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:18<00:00,  6.33it/s, loss=2.61, v_num=3tu5]Epoch 11, global step 1092: 'val/CER' reached 98.51050 (best 98.51050), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=11-step=1092.ckpt' as top 1
+Epoch 12: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:19<00:00,  6.29it/s, loss=2.43, v_num=3tu5]Epoch 12, global step 1183: 'val/CER' reached 93.45938 (best 93.45938), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=12-step=1183.ckpt' as top 1
+Epoch 13: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:18<00:00,  6.34it/s, loss=2.33, v_num=3tu5]Epoch 13, global step 1274: 'val/CER' reached 91.52468 (best 91.52468), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=13-step=1274.ckpt' as top 1   
+Epoch 14: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:17<00:00,  6.67it/s, loss=2.24, v_num=3tu5]Epoch 14, global step 1365: 'val/CER' reached 87.73772 (best 87.73772), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=14-step=1365.ckpt' as top 1   
+Epoch 15: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 10.96it/s, loss=2.14, v_num=3tu5]Epoch 15, global step 1456: 'val/CER' reached 86.75388 (best 86.75388), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=15-step=1456.ckpt' as top 1   
+Epoch 16: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.09it/s, loss=1.96, v_num=3tu5]Epoch 16, global step 1547: 'val/CER' reached 82.88996 (best 82.88996), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=16-step=1547.ckpt' as top 1   
+Epoch 17: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.12it/s, loss=1.92, v_num=3tu5]Epoch 17, global step 1638: 'val/CER' was not in top 1
+Epoch 18: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.10it/s, loss=1.82, v_num=3tu5]Epoch 18, global step 1729: 'val/CER' reached 76.66813 (best 76.66813), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=18-step=1729.ckpt' as top 1   
+Epoch 19: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.23it/s, loss=1.75, v_num=3tu5]Epoch 19, global step 1820: 'val/CER' reached 74.78290 (best 74.78290), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=19-step=1820.ckpt' as top 1
+Epoch 20: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.11it/s, loss=1.64, v_num=3tu5]Epoch 20, global step 1911: 'val/CER' reached 66.98362 (best 66.98362), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=20-step=1911.ckpt' as top 1   
+Epoch 21: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.16it/s, loss=1.6, v_num=3tu5]Epoch 21, global step 2002: 'val/CER' reached 59.42069 (best 59.42069), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=21-step=2002.ckpt' as top 1   
+Epoch 22: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.14it/s, loss=1.52, v_num=3tu5]Epoch 22, global step 2093: 'val/CER' reached 54.93569 (best 54.93569), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=22-step=2093.ckpt' as top 1
+Epoch 23: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.19it/s, loss=1.47, v_num=3tu5]Epoch 23, global step 2184: 'val/CER' reached 48.81829 (best 48.81829), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=23-step=2184.ckpt' as top 1   
+Epoch 24: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.27it/s, loss=1.42, v_num=3tu5]Epoch 24, global step 2275: 'val/CER' reached 44.58063 (best 44.58063), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=24-step=2275.ckpt' as top 1   
+Epoch 25: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.16it/s, loss=1.35, v_num=3tu5]Epoch 25, global step 2366: 'val/CER' reached 41.15093 (best 41.15093), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=25-step=2366.ckpt' as top 1   
+Epoch 26: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.18it/s, loss=1.32, v_num=3tu5]Epoch 26, global step 2457: 'val/CER' reached 40.23304 (best 40.23304), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=26-step=2457.ckpt' as top 1   
+Epoch 27: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.07it/s, loss=1.3, v_num=3tu5]Epoch 27, global step 2548: 'val/CER' was not in top 1
+Epoch 28: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.11it/s, loss=1.29, v_num=3tu5]Epoch 28, global step 2639: 'val/CER' reached 39.96373 (best 39.96373), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=28-step=2639.ckpt' as top 1
+Epoch 29: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:10<00:00, 11.07it/s, loss=1.3, v_num=3tu5]Epoch 29, global step 2730: 'val/CER' reached 39.13378 (best 39.13378), saving model to 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=29-step=2730.ckpt' as top 1   
+`Trainer.fit` stopped: `max_epochs=30` reached.
+Epoch 29: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 120/120 [00:11<00:00, 10.75it/s, loss=1.3, v_num=3tu5]
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Validation: 0it [00:00, ?it/s]wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_130425-sobgjknk
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/sobgjknk
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_130425-rszlc30p
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/rszlc30p
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_130425-k52md79u
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/k52md79u
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_130425-hncm1ck0
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/hncm1ck0
+Validation DataLoader 0: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 29/29 [00:02<00:00, 13.76it/s]
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+     Validate metric           DataLoader 0
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+         val/CER             39.13378143310547
+         val/DER            1.1267451047897339
+         val/IER            20.820051193237305
+         val/SER             17.18698501586914
+        val/loss            1.2564702033996582
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Testing: 0it [00:00, ?it/s]wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Currently logged in as: mel_mamafid26 (mel_mamafid26-ucla) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_130432-imstdszt
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/imstdszt
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_130432-vteyocur
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/vteyocur
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_130432-xaivz48b
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/xaivz48b
+wandb: Tracking run with wandb version 0.19.7
+wandb: Run data is saved locally in .\wandb\run-20250308_130432-m5597qsb
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View project at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH
+wandb:  View run at https://wandb.ai/mel_mamafid26-ucla/Baseline_TRAIN_12_VAL_4_TEST_2_30_EPOCH/runs/m5597qsb
+Testing DataLoader 0: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:01<00:00,  1.11it/s]
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+       Test metric             DataLoader 0
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+        test/CER             35.85154342651367
+        test/DER            1.0760953426361084
+        test/IER            16.196332931518555
+        test/SER             18.57911491394043
+        test/loss           1.0806684494018555
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+{'val_metrics': [{'val/loss': 1.2564702033996582,
+                  'val/CER': 39.13378143310547,
+                  'val/IER': 20.820051193237305,
+                  'val/DER': 1.1267451047897339,
+                  'val/SER': 17.18698501586914}],
+ 'test_metrics': [{'test/loss': 1.0806684494018555,
+                   'test/CER': 35.85154342651367,
+                   'test/IER': 16.196332931518555,
+                   'test/DER': 1.0760953426361084,
+                   'test/SER': 18.57911491394043}],
+ 'best_checkpoint': 'C:\\Users\\melis\\Downloads\\Baseline\\emg2qwerty\\logs\\2025-03-08\\12-58-00/checkpoints\\epoch=29-step=2730.ckpt'}
