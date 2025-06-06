@@ -2,6 +2,8 @@
 
 This project explores keystroke prediction using surface electromyography (sEMG) signals to enable keyboardless human-computer interaction. The primary goal is to minimize **Character Error Rate (CER)** through architectural design, preprocessing, and augmentation strategies.
 
+> This project is built upon the [emg2qwerty](https://github.com/facebookresearch/emg2qwerty) work from Meta. For more details, refer to their [research paper](https://arxiv.org/abs/2410.20081).
+
 ## 📌 Project Overview
 
 This project is built upon the emg2qwerty work from Meta, implementing various deep learning architectures for predicting keystrokes from surface electromyography (sEMG) signals. The goal is to develop an accurate model that can predict which key was pressed based on the muscle activity patterns captured by sEMG sensors.
